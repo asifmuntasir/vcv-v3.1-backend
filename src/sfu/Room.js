@@ -1,4 +1,4 @@
-import config from '../config'
+import config from '../config.js';
 
 export default class Room {
   constructor(roomId, worker, io) {
