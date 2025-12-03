@@ -2,19 +2,30 @@ import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import dotenv from 'dotenv'; // Fixed: Changed require to import
 import * as mediasoup from 'mediasoup';
-import config from './config.js';
+import config from './config.js'; // Ensure path is correct
 import Room from './sfu/Room.js';
 import Peer from './sfu/Peer.js';
+
+// --- Database & Routes ---
+import connectDB from './db/db.js';
+import meetingRoutes from './routes/meetingRoutes.js';
 
 // --- Global Variables ---
 let worker;
 const rooms = new Map(); // Map<roomId, Room>
 
 // --- Initialization ---
+dotenv.config(); // Initialize environment variables
+connectDB();     // Connect to MongoDB
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// --- API Routes ---
+app.use('/api/meetings', meetingRoutes);
 
 // Health Check Route
 app.get('/', (req, res) => {
@@ -24,7 +35,7 @@ app.get('/', (req, res) => {
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "*", // Allow connections from React (localhost:5173)
+    origin: "*", // Allow connections from React
     methods: ["GET", "POST"]
   }
 });
@@ -130,7 +141,6 @@ io.on('connection', (socket) => {
   });
 
   // 6. Consume (Receive Video/Audio)
-  // Used when 'transport-produce' logic tells us someone else is new
   socket.on('consume', async ({ rtpCapabilities, remoteProducerId, serverConsumerTransportId }, callback) => {
     const room = rooms.get(socket.roomId);
     if (!room) return;
